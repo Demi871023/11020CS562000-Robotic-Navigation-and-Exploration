@@ -42,6 +42,9 @@ def render_path(img, nav_pos, way_points, path):
     return img
 
 def navigation(args, simulator, controller, planner, start_pose=(100,200,0)):
+    
+    f = open("output.txt", 'w')
+    
     global pose, nav_pos, way_points, path, set_controller_path
     # Initialize
     window_name = "Known Map Navigation Demo"
@@ -65,11 +68,13 @@ def navigation(args, simulator, controller, planner, start_pose=(100,200,0)):
         if path is not None and collision_count == 0:
             # TODO: Planning and Controlling
 
+            # NOTE : Caculate distance
             end_dist = np.hypot(nav_pos[0] - simulator.state.x, nav_pos[1] - simulator.state.y)
-
+            
             if args.simulator == "basic":
+
                 if end_dist > 10:
-                    next_v = 20
+                    next_v = 2
                 else:
                     next_v = 0
 
@@ -85,12 +90,44 @@ def navigation(args, simulator, controller, planner, start_pose=(100,200,0)):
                 command = ControlState("basic", next_v, next_w)
 
             elif args.simulator == "diff_drive":
+                
+                if end_dist > 10:
+                    next_v = 5
+                else:
+                    next_v = 0
+                
+                info = {
+                    "x":simulator.state.x,
+                    "y":simulator.state.y,
+                    "yaw":simulator.state.yaw,
+                    "v":simulator.state.v,
+                    "dt":simulator.dt
+                }
+                next_w, target = controller.feedback(info)
+                r = simulator.wu/2
                 next_lw = 0
                 next_rw = 0
                 command = ControlState("diff_drive", next_lw, next_rw)
+            
             elif args.simulator == "bicycle":
-                next_a = 0
-                next_delta = 0
+
+                if end_dist > 40:
+                    target_v = 2
+                else:
+                    target_v = 0
+                next_a = (target_v - simulator.state.v) * 0.5
+
+                info = {
+                    "x":simulator.state.x, 
+                    "y":simulator.state.y, 
+                    "yaw":simulator.state.yaw, 
+                    "v":simulator.state.v,
+                    "delta":simulator.cstate.delta,
+                    "l":simulator.l,
+                    "dt":simulator.dt
+                }
+
+                next_delta, target = controller.feedback(info)
                 command = ControlState("bicycle", next_a, next_delta)
             else:
                 exit()            
